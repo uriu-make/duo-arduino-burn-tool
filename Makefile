@@ -15,7 +15,7 @@ endif
 CXX = $(TOOLCHAIN_PREFIX)gcc
 
 CFLAGS += -I$(SYSROOT)/usr/include
-
+CFLAGS += -O2
 LDFLAGS += -L$(SYSROOT)/lib
 LDFLAGS += -L$(SYSROOT)/usr/lib
 
