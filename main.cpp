@@ -14,7 +14,8 @@
 #define SERIAL_PORT            "/dev/ttyGS0"
 #define REMOTEPROC_STATE       "/sys/class/remoteproc/remoteproc0/state"
 #define REMOTEPROC_FIRMWARE    "/sys/class/remoteproc/remoteproc0/firmware"
-#define FIRMWARE_FILE_PATH     "/lib/firmware/"
+#define FIRMWARE_CLASS         "/sys/module/firmware_class/parameters/path"
+#define FIRMWARE_FILE_PATH     "/lib/firmware"
 #define FIRMWARE_FILE_NAME     "arduino.elf"
 #define OLD_FIRMWARE_FILE_NAME "arduino_old.elf"
 
@@ -31,7 +32,7 @@
 int main(int argc, char *argv[]) {
   int serial_fd = 0;
   int state_fd = 0;
-  int firmware_fd = 0;
+  int fd = 0;
 
   struct termios tio;
   int baudRate = B9600;  // 9600bps
@@ -64,6 +65,36 @@ int main(int argc, char *argv[]) {
   tcsetattr(serial_fd, TCSANOW, &tio);
 
   ioctl(serial_fd, TCSETS, &tio);
+
+  state_fd = open(REMOTEPROC_STATE, O_RDWR);
+  if (state_fd < 0) {
+    return -1;
+  }
+
+  write(state_fd, STOP, sizeof(STOP));
+  close(state_fd);
+
+  fd = open(FIRMWARE_CLASS, O_RDWR);
+  if (fd < 0) {
+    return -1;
+  }
+  write(fd, FIRMWARE_FILE_PATH, sizeof(FIRMWARE_FILE_PATH));
+  close(fd);
+
+  fd = open(REMOTEPROC_FIRMWARE, O_RDWR);
+  if (fd < 0) {
+    return -1;
+  }
+  write(fd, FIRMWARE_FILE_NAME, sizeof(FIRMWARE_FILE_NAME));
+  close(fd);
+
+  state_fd = open(REMOTEPROC_STATE, O_RDWR);
+  if (state_fd < 0) {
+    return -1;
+  }
+
+  write(state_fd, START, sizeof(START));
+  close(state_fd);
 
   while (true) {
     FD_ZERO(&rfds);
@@ -115,16 +146,10 @@ int main(int argc, char *argv[]) {
             return -1;
           }
 
-          firmware_fd = open(REMOTEPROC_FIRMWARE, O_RDWR);
-          if (firmware_fd < 0) {
-            return -1;
-          }
-
           write(state_fd, STOP, sizeof(STOP));
           write(serial_fd, buf, len);
 
           close(state_fd);
-          close(firmware_fd);
           continue;
         }
       }
@@ -142,18 +167,8 @@ int main(int argc, char *argv[]) {
             return -1;
           }
 
-          firmware_fd = open(REMOTEPROC_FIRMWARE, O_RDWR);
-          if (firmware_fd < 0) {
-            return -1;
-          }
-
-          write(firmware_fd, FIRMWARE_FILE_NAME, sizeof(FIRMWARE_FILE_NAME));
-
           write(state_fd, START, sizeof(START));
-          write(state_fd, buf, len);
-
           close(state_fd);
-          close(firmware_fd);
           continue;
         }
       }
@@ -172,7 +187,7 @@ int main(int argc, char *argv[]) {
           file_size |= ((uint32_t)buf[6] << 16);
           file_size |= ((uint32_t)buf[7] << 24);
 
-          file = fopen(FIRMWARE_FILE_PATH FIRMWARE_FILE_NAME, "wb");
+          file = fopen(FIRMWARE_FILE_PATH "/" FIRMWARE_FILE_NAME, "wb");
           update = true;
           continue;
         }
