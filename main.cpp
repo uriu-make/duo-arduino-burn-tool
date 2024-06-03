@@ -88,14 +88,6 @@ int main(int argc, char *argv[]) {
   write(fd, FIRMWARE_FILE_NAME, sizeof(FIRMWARE_FILE_NAME));
   close(fd);
 
-  state_fd = open(REMOTEPROC_STATE, O_RDWR);
-  if (state_fd < 0) {
-    return -1;
-  }
-
-  write(state_fd, START, sizeof(START));
-  close(state_fd);
-
   while (true) {
     FD_ZERO(&rfds);
     FD_SET(serial_fd, &rfds);
