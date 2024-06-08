@@ -8,6 +8,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <sys/select.h>
+#include <sys/stat.h>
 
 #define CHUNK_SIZE 64
 
@@ -70,10 +71,6 @@ int main(int argc, char *argv[]) {
   if (state_fd < 0) {
     return -1;
   }
-
-  write(state_fd, STOP, sizeof(STOP));
-  close(state_fd);
-
   fd = open(FIRMWARE_CLASS, O_RDWR);
   if (fd < 0) {
     return -1;
@@ -87,6 +84,15 @@ int main(int argc, char *argv[]) {
   }
   write(fd, FIRMWARE_FILE_NAME, sizeof(FIRMWARE_FILE_NAME));
   close(fd);
+
+  if (access(FIRMWARE_FILE_PATH "/" FIRMWARE_FILE_NAME, F_OK) == 0) {
+    state_fd = open(REMOTEPROC_STATE, O_RDWR);
+    if (state_fd < 0) {
+      return -1;
+    }
+    write(state_fd, START, sizeof(START));
+    close(state_fd);
+  }
 
   while (true) {
     FD_ZERO(&rfds);
@@ -154,13 +160,15 @@ int main(int argc, char *argv[]) {
           }
         }
         if (i == len) {
-          state_fd = open(REMOTEPROC_STATE, O_RDWR);
-          if (state_fd < 0) {
-            return -1;
+          if (access(FIRMWARE_FILE_PATH "/" FIRMWARE_FILE_NAME, F_OK) == 0) {
+            state_fd = open(REMOTEPROC_STATE, O_RDWR);
+            if (state_fd < 0) {
+              return -1;
+            }
+            write(state_fd, START, sizeof(START));
+            close(state_fd);
           }
 
-          write(state_fd, START, sizeof(START));
-          close(state_fd);
           continue;
         }
       }
