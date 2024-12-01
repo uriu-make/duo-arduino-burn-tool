@@ -133,6 +133,16 @@ int main(int argc, char *argv[]) {
         }
         continue;
       }
+    } else {
+      while (true) {
+        close(serial_fd);
+        serial_fd = -1;
+        usleep(500 * 1000);
+        serial_fd = open(SERIAL_PORT, O_RDWR);
+        if (serial_fd > 0) {
+          break;
+        }
+      }
     }
   }
 
